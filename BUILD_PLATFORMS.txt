@@ -1,0 +1,7 @@
+لإنشاء مجلدات المنصات الرسمية في بيئة Flutter:
+1) ثبّت Flutter.
+2) من داخل مجلد المشروع نفّذ: flutter create --platforms=android,ios .
+3) ثم flutter pub get
+4) للتجربة: flutter run
+5) لإنتاج APK: flutter build apk --release
+ملاحظة: يتطلب بناء iOS جهاز macOS مع Xcode.
