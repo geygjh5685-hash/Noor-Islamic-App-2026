@@ -78,13 +78,19 @@ class QuranScreen extends StatefulWidget {
 
 class _QuranScreenState extends State<QuranScreen> {
   late final Future<List<_QuranSurah>> _surahsFuture;
+  late Future<int?> _lastSurahFuture;
 
   @override
   void initState() {
     super.initState();
-    _surahsFuture = _loadSurahs();
+ _surahsFuture = _loadSurahs();
+ _lastSurahFuture =
+ _loadLastSurahNumber();
   }
-
+ Future<int?> _loadLastSurahNumber() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getInt('last_surah');
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -133,8 +139,59 @@ class _QuranScreenState extends State<QuranScreen> {
                   subtitle: Text('114 سورة • 6236 آية'),
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(
+FutureBuilder<int?>(
+future: _lastSurahFuture,
+  builder: (context, lastSnapshot) {
+    final lastNumber = lastSnapshot.data;
+
+    if (lastNumber == null) {
+      return const SizedBox.shrink();
+    }
+
+    final matchingSurahs =
+        surahs.where((s) => s.number == lastNumber).toList();
+
+    if (matchingSurahs.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final lastSurah = matchingSurahs.first;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 6,
+      ),
+      child: ListTile(
+        leading: const CircleAvatar(
+          backgroundColor: Colors.green,
+          child: Icon(
+            Icons.bookmark,
+            color: Colors.white,
+          ),
+        ),
+        title: const Text(
+          'متابعة القراءة',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text('سورة ${lastSurah.name}'),
+        trailing: const Icon(Icons.chevron_left),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SurahReaderScreen(
+                surah: lastSurah,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  },
+),
+             const Padding(
+             padding: EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
                 ),
