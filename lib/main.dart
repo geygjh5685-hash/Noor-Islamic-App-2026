@@ -24,10 +24,17 @@ class _NoorAppState extends State<NoorApp> {
   int index = 0;
   bool dark = false;
 
-  final pages = const [
-    HomeScreen(), QuranScreen(), AdhkarScreen(),
-    GamesScreen(), LibraryScreen(), SettingsScreen(),
-  ];
+  List<Widget> get pages => [
+  const HomeScreen(),
+  const QuranScreen(),
+  const AdhkarScreen(),
+  const GamesScreen(),
+  const LibraryScreen(),
+  SettingsScreen(
+    darkMode: dark,
+    onThemeChanged: (value) => setTheme(value),
+  ),
+];
 
   @override
   void initState() {
