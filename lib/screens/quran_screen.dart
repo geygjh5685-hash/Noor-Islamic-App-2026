@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/quran_metadata.dart';
 
 class _QuranSurah {
@@ -199,7 +200,7 @@ class _QuranScreenState extends State<QuranScreen> {
   }
 }
 
-class SurahReaderScreen extends StatelessWidget {
+class SurahReaderScreen extends StatefulWidget	{
   final _QuranSurah surah;
 
   const SurahReaderScreen({
@@ -208,14 +209,71 @@ class SurahReaderScreen extends StatelessWidget {
   });
 
   @override
+  State<SurahReaderScreen> createState() => _SurahReaderScreenState();
+}
+
+class _SurahReaderScreenState extends State<SurahReaderScreen> {
+  _QuranSurah get surah => widget.surah;
+
+final ScrollController _scrollController = ScrollController();
+bool _restoringPosition = true;
+
+@override
+void initState() {
+  super.initState();
+  _restorePosition();
+}
+
+Future<void> _restorePosition() async {
+  final prefs = await SharedPreferences.getInstance();
+  final savedSurah = prefs.getInt('last_surah');
+  final savedOffset = prefs.getDouble('last_offset') ?? 0.0;
+
+  if (savedSurah == surah.number) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_scrollController.hasClients) {
+        final max = _scrollController.position.maxScrollExtent;
+        _scrollController.jumpTo(
+          savedOffset.clamp(0.0, max).toDouble(),
+        );
+      }
+      _restoringPosition = false;
+    });
+  } else {
+    await prefs.setInt('last_surah', surah.number);
+    await prefs.setDouble('last_offset', 0.0);
+    _restoringPosition = false;
+  }
+}  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('سورة ${surah.name}'),
         centerTitle: true,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: NotificationListener<ScrollEndNotification>(
+        onNotification: (notification) {
+          if (!_restoringPosition && _scrollController.hasClients) {
+            SharedPreferences.getInstance().then((prefs) async {
+              await prefs.setInt('last_surah', surah.number);
+              await prefs.setDouble(
+                'last_offset',
+                _scrollController.offset,
+              );
+            });
+          }
+          return false;
+        },
+        child: ListView(
+          controller: _scrollController,
+          padding: const EdgeInsets.all(16),
         children: [
           const SizedBox(height: 12),
           Center(
@@ -268,6 +326,7 @@ class SurahReaderScreen extends StatelessWidget {
           }),
           const SizedBox(height: 30),
         ],
+      ),
       ),
     );
   }
