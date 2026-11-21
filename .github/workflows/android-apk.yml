@@ -1,4 +1,3 @@
-cat > .github/workflows/android-apk.yml <<'EOF'
 name: Build Noor Islamic APK
 
 on:
@@ -34,7 +33,7 @@ jobs:
       - name: Create Android project
         run: flutter create --project-name=noor_islamic --platforms=android .
 
-      - name: Enable Android core library desugaring
+      - name: Enable core library desugaring
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -45,41 +44,31 @@ jobs:
           path = kts if kts.exists() else groovy
 
           if not path.exists():
-              raise SystemExit("Android app Gradle file not found")
+              raise SystemExit("Gradle file not found")
 
           text = path.read_text()
           is_kts = path.suffix == ".kts"
 
-          match = re.search(r'(?m)^(\s*)compileOptions\s*\{', text)
-          if not match:
-              raise SystemExit("compileOptions block not found")
-
-          indent = match.group(1) + "    "
-          setting = (
-              "isCoreLibraryDesugaringEnabled = true"
-              if is_kts else "coreLibraryDesugaringEnabled true"
-          )
-
           if "isCoreLibraryDesugaringEnabled" not in text and "coreLibraryDesugaringEnabled" not in text:
+              match = re.search(r'(?m)^(\s*)compileOptions\s*\{', text)
+              if not match:
+                  raise SystemExit("compileOptions not found")
+              indent = match.group(1) + "    "
+              setting = "isCoreLibraryDesugaringEnabled = true" if is_kts else "coreLibraryDesugaringEnabled true"
               pos = match.end()
               text = text[:pos] + "\n" + indent + setting + text[pos:]
 
           dependency = "com.android.tools:desugar_jdk_libs:2.1.4"
           if dependency not in text:
-              dep_match = re.search(r'(?m)^dependencies\s*\{', text)
-              line = (
-                  f'    coreLibraryDesugaring("{dependency}")'
-                  if is_kts else
-                  f"    coreLibraryDesugaring '{dependency}'"
-              )
-              if dep_match:
-                  pos = dep_match.end()
-                  text = text[:pos] + "\n" + line + text[pos:]
-              else:
-                  text += "\ndependencies {\n" + line + "\n}\n"
+              match = re.search(r'(?m)^dependencies\s*\{', text)
+              if not match:
+                  raise SystemExit("dependencies block not found")
+              line = f'    coreLibraryDesugaring("{dependency}")' if is_kts else f"    coreLibraryDesugaring '{dependency}'"
+              pos = match.end()
+              text = text[:pos] + "\n" + line + text[pos:]
 
           path.write_text(text)
-          print("Core library desugaring enabled successfully")
+          print("Desugaring enabled")
           PY
 
       - name: Get dependencies
@@ -96,4 +85,3 @@ jobs:
         with:
           name: Noor-Islamic-APK
           path: build/app/outputs/flutter-apk/app-release.apk
-EOF
