@@ -61,11 +61,12 @@ jobs:
           dependency = "com.android.tools:desugar_jdk_libs:2.1.4"
           if dependency not in text:
               match = re.search(r'(?m)^dependencies\s*\{', text)
-              if not match:
-                  raise SystemExit("dependencies block not found")
               line = f'    coreLibraryDesugaring("{dependency}")' if is_kts else f"    coreLibraryDesugaring '{dependency}'"
-              pos = match.end()
-              text = text[:pos] + "\n" + line + text[pos:]
+              if match:
+                  pos = match.end()
+                  text = text[:pos] + "\n" + line + text[pos:]
+              else:
+                  text += "\ndependencies {\n" + line + "\n}\n"
 
           path.write_text(text)
           print("Desugaring enabled")
