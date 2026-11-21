@@ -1,3 +1,4 @@
+cat > .github/workflows/android-apk.yml <<'EOF'
 name: Build Noor Islamic APK
 
 on:
@@ -29,8 +30,58 @@ jobs:
           channel: stable
           flutter-version: '3.50.1'
           cache: true
+
       - name: Create Android project
         run: flutter create --project-name=noor_islamic --platforms=android .
+
+      - name: Enable Android core library desugaring
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          kts = Path("android/app/build.gradle.kts")
+          groovy = Path("android/app/build.gradle")
+          path = kts if kts.exists() else groovy
+
+          if not path.exists():
+              raise SystemExit("Android app Gradle file not found")
+
+          text = path.read_text()
+          is_kts = path.suffix == ".kts"
+
+          match = re.search(r'(?m)^(\s*)compileOptions\s*\{', text)
+          if not match:
+              raise SystemExit("compileOptions block not found")
+
+          indent = match.group(1) + "    "
+          setting = (
+              "isCoreLibraryDesugaringEnabled = true"
+              if is_kts else "coreLibraryDesugaringEnabled true"
+          )
+
+          if "isCoreLibraryDesugaringEnabled" not in text and "coreLibraryDesugaringEnabled" not in text:
+              pos = match.end()
+              text = text[:pos] + "\n" + indent + setting + text[pos:]
+
+          dependency = "com.android.tools:desugar_jdk_libs:2.1.4"
+          if dependency not in text:
+              dep_match = re.search(r'(?m)^dependencies\s*\{', text)
+              line = (
+                  f'    coreLibraryDesugaring("{dependency}")'
+                  if is_kts else
+                  f"    coreLibraryDesugaring '{dependency}'"
+              )
+              if dep_match:
+                  pos = dep_match.end()
+                  text = text[:pos] + "\n" + line + text[pos:]
+              else:
+                  text += "\ndependencies {\n" + line + "\n}\n"
+
+          path.write_text(text)
+          print("Core library desugaring enabled successfully")
+          PY
+
       - name: Get dependencies
         run: flutter pub get
 
@@ -45,3 +96,4 @@ jobs:
         with:
           name: Noor-Islamic-APK
           path: build/app/outputs/flutter-apk/app-release.apk
+EOF
